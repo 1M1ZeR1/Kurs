@@ -1,0 +1,47 @@
+﻿<Window x:Class="Kurs.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:c1="http://schemas.componentone.com/winfx/2006/xaml"
+        xmlns:oxy="http://oxyplot.org/wpf"
+        xmlns:local="clr-namespace:Kurs"
+        mc:Ignorable="d"
+        Title="Task Manager" Height="1080" Width="1920">
+
+    <Window.DataContext>
+        <local:CreateCharts x:Name="Papa"/>
+    </Window.DataContext>
+    <TabControl x:Name="products">
+        <TabItem x:Name="TabProccesing">
+            <TabItem.Header >
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="100,10">Proccesing</TextBlock>
+                </StackPanel>
+            </TabItem.Header>
+            <ScrollViewer x:Name="Scrolls" CanContentScroll="True" Height="Auto">
+            </ScrollViewer>
+
+        </TabItem>
+        <TabItem x:Name="TabEffiency">
+            <TabItem.Header>
+                <StackPanel >
+                    <TextBlock Margin="100,10">Efficiency</TextBlock>
+                </StackPanel>
+            </TabItem.Header>
+            <Grid x:Name="ChartGrid">
+
+                <Button x:Name="MemmoryButton" Background="WhiteSmoke" Content="Память (RAM)" FontSize="20" FontWeight="Bold" Margin="10,0,0,400" Height="111" Click="MemmoryButton_Click" HorizontalAlignment="Left" Width="526">
+                </Button>
+                <Button x:Name="CpuButton" Background="WhiteSmoke" Content="Память процессора (CPU)" FontSize="20" FontWeight="Bold" Margin="10,0,0,100" Height="111" Click="CpuButton_Click" HorizontalAlignment="Left" Width="526">
+                </Button>
+                <oxy:PlotView Model="{Binding MyChart}" Margin="664,142,123,242">
+
+                </oxy:PlotView>
+            </Grid>
+            
+
+        </TabItem>
+    </TabControl>
+
+</Window>
