@@ -31,17 +31,20 @@
             </TabItem.Header>
             <Grid x:Name="ChartGrid">
 
-                <Button x:Name="MemmoryButton" Background="WhiteSmoke" Content="Память (RAM)" FontSize="20" FontWeight="Bold" Margin="10,0,0,400" Height="111" Click="MemmoryButton_Click" HorizontalAlignment="Left" Width="526">
+                <Button x:Name="MemoryButton" Background="WhiteSmoke" Content="Память (RAM)" FontSize="20" FontWeight="Bold" Margin="10,0,0,400" Height="111" Click="MemoryButton_Click" HorizontalAlignment="Left" Width="526">
                 </Button>
                 <Button x:Name="CpuButton" Background="WhiteSmoke" Content="Память процессора (CPU)" FontSize="20" FontWeight="Bold" Margin="10,0,0,100" Height="111" Click="CpuButton_Click" HorizontalAlignment="Left" Width="526">
                 </Button>
-                <oxy:PlotView Model="{Binding MyChart}" Margin="664,142,123,242">
+                <Button x:Name="DataResult" Background="WhiteSmoke" Content="Сделать отчёт" FontSize="20" FontWeight="Bold" Margin="10,0,0,-200" Height="111" Click="DataResult_Click" HorizontalAlignment="Left" Width="526">
+                </Button>
+                <oxy:PlotView Model="{Binding MyChartCpu}" Margin="664,142,123,242"/>
+                <oxy:PlotView Model="{Binding MyChartMemory}" Margin="664,142,123,242"/>
 
-                </oxy:PlotView>
+                <FlowDocumentReader x:Name="lopppa">
+                </FlowDocumentReader>
             </Grid>
-            
+
 
         </TabItem>
     </TabControl>
-
 </Window>

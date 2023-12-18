@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms.DataVisualization.Charting;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -17,12 +16,38 @@ namespace Kurs
     class CreateCharts
     {
         public PlotModel MyChart { get; set; }
+        public PlotModel MyChartCpu { get; set; }
+        public PlotModel MyChartMemory { get; set; }
+
+        public LineSeries SeriesMemory = new LineSeries();
         public LineSeries SeriesCpu = new LineSeries();
 
         public CreateCharts() 
         {
 
-            MyChart = new PlotModel()
+            MyChartMemory = new PlotModel()
+            {
+                Title = "Memory",
+            };
+
+            var AxisPosLeftMemory = new LinearAxis()
+            {
+                Position = AxisPosition.Left,
+                Title = "Value",
+            };
+
+            var AxisPosBottomMemory = new DateTimeAxis()
+            {
+                Title = "Time",
+                Position = AxisPosition.Bottom,
+            };
+
+            MyChartMemory.Axes.Add(AxisPosBottomMemory);
+            MyChartMemory.Axes.Add(AxisPosLeftMemory);
+            MyChartMemory.Series.Add(SeriesMemory);
+
+
+            MyChartCpu = new PlotModel()
             {
                 Title = "CPU",
             };
@@ -30,7 +55,9 @@ namespace Kurs
             var AxisPosLeft = new LinearAxis()
             {
                 Position = AxisPosition.Left,
-                Title = "LAAAA"
+                Title = "Value",
+                Minimum = 0,
+                Maximum = 100,
             };
 
             var AxisPosBottom = new DateTimeAxis()
@@ -39,14 +66,22 @@ namespace Kurs
                 Position = AxisPosition.Bottom,
             };
 
-            MyChart.Axes.Add(AxisPosBottom);
-            MyChart.Axes.Add(AxisPosLeft);
-            MyChart.Series.Add(SeriesCpu);
+            MyChartCpu.Axes.Add(AxisPosBottom);
+            MyChartCpu.Axes.Add(AxisPosLeft);
+            MyChartCpu.Series.Add(SeriesCpu);
 
         }
-        public void AddNewPoint(double value)
+        public void AddNewPointForCpu(double value)
         {
             SeriesCpu.Points.Add(DateTimeAxis.CreateDataPoint(DateTime.Now,value));
+            MyChartCpu.InvalidatePlot(true);
+            if(SeriesCpu.Points.Count > 10)SeriesCpu.Points.RemoveAt(0);
+        }
+        public void AddNewPointForMemory(double value)
+        {
+            SeriesMemory.Points.Add(DateTimeAxis.CreateDataPoint(DateTime.Now,value));
+            MyChartMemory.InvalidatePlot(true);
+            if (SeriesMemory.Points.Count > 10) SeriesMemory.Points.RemoveAt(0);
         }
     }
 }

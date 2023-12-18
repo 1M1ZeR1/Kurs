@@ -32,9 +32,14 @@ namespace Kurs
             CPU
         }
 
-        
-        WhichFeald whichFeald = WhichFeald.None; 
+        DateTime? dateTime;
+        FavoritesList favoritesList = new FavoritesList();
 
+        PdfReport pdfReport = new PdfReport();
+        WhichFeald whichFeald = WhichFeald.None;
+        ProccessesForReport[] massiv;
+
+        stage stageStage = stage.expectation;
         CpuGetInfo CpuGetInfo = new CpuGetInfo();
 
         public Process[] mas;
@@ -70,6 +75,7 @@ namespace Kurs
             for(int i = 0; i < otherProccesses.Length; i++)
             {
                 otherProccesses[i] = new OtherProccess(mas[i].ProcessName, mas[i].PrivateMemorySize64, CpuGetInfo.CpuUsage(mas[i]));
+                otherProccesses[i].Id = mas[i].Id;
             }
 
             OfProccesings.ColumnDefinitions.Clear();
@@ -89,7 +95,7 @@ namespace Kurs
                     break;
 
                 case WhichFeald.RAM:
-                    otherProccesses = otherProccesses.OrderByDescending(s => s.OtherProccessMemmory).ToArray();
+                    otherProccesses = otherProccesses.OrderByDescending(s => s.OtherProccessMemory).ToArray();
                     break;
                 case WhichFeald.CPU:
                     otherProccesses = otherProccesses.OrderByDescending(s => s.OtherProccessCPU).ToArray();
@@ -100,11 +106,68 @@ namespace Kurs
                 for (int i = 0; i < mas.Length; i++)
                 {
                     resultName[i] = otherProccesses[i].OtherProccessName;
-                    resultMemory[i] = Math.Round((double)otherProccesses[i].OtherProccessMemmory / 1048576, 1);
-                    resultCPU[i] = otherProccesses[i].OtherProccessCPU;
+                    resultMemory[i] = Math.Round((double)otherProccesses[i].OtherProccessMemory / 1048576, 1);
+                    resultCPU[i] = Math.Round(otherProccesses[i].OtherProccessCPU,2);
                 }
 
-            Papa.AddNewPoint(resultMemory.Sum());
+            Papa.AddNewPointForMemory(resultMemory.Sum());
+            Papa.AddNewPointForCpu(resultCPU.Sum());
+
+            if (dateTime > DateTime.Now)
+            {
+                if(stageStage == stage.expectation)
+                {
+                    for (int i = 0; i < otherProccesses.Length; i++)
+                    {
+                        massiv[i].proccessName = otherProccesses[i].OtherProccessName;
+                        massiv[i].Id = otherProccesses[i].Id;
+                        massiv[i].proccessMemory += resultMemory[i];
+                        massiv[i].proccessCpu += resultCPU[i];
+
+                        favoritesList.addingInfo(otherProccesses[i], resultCPU[i], resultMemory[i]);
+                    }
+
+                    pdfReport.NameOfComputerAndTime(dateTime);
+                    stageStage = stage.inProgress;
+                }
+                if(stageStage == stage.inProgress)
+                {
+                    pdfReport.AddNewPointForReportCPU(resultCPU.Sum());
+                    pdfReport.AddNewPointForReportMemory(resultMemory.Sum());
+                    for(int i = 0;i < otherProccesses.Length; i++)
+                    {
+                        if (massiv[i].Id == otherProccesses[i].Id)
+                        {
+                            massiv[i].proccessCpu += resultCPU[i];
+                            massiv[i].proccessMemory += resultMemory[i];
+                        }
+
+                        favoritesList.addingInfo(otherProccesses[i], resultCPU[i], resultMemory[i]);
+                    }
+                }
+            }
+            else if(dateTime <= DateTime.Now)
+            {
+
+                FlowDocument flowdocument = new FlowDocument();
+                massiv = massiv.OrderByDescending(s => s.proccessMemory).ToArray();
+                string result1 = massiv[0].proccessName;
+                massiv = massiv.OrderByDescending(s => s.proccessCpu).ToArray();
+                string result2 = massiv[0].proccessName;
+
+                flowdocument.Blocks.Add(pdfReport.CreateTable(result1,result2,favoritesList.finishList()));
+
+                flowdocument.ColumnWidth = 500;
+                PrintDialog printDialog = new PrintDialog();
+
+                if (printDialog.ShowDialog() == true)
+                {
+                    IDocumentPaginatorSource pageSource = (IDocumentPaginatorSource)flowdocument;
+                    printDialog.PrintDocument(pageSource.DocumentPaginator, "Flow");
+                }
+                dateTime = null;
+                stageStage = stage.expectation;
+            }
 
             for (int i = 0; i < mas.Length; i++)
             {
@@ -121,13 +184,37 @@ namespace Kurs
                 Button button = new Button() {Background = Brushes.White, Content = new TextBlock { Text = $"{resultName[j]}", Margin = new Thickness(0, 0, 180, 0), FontWeight = FontWeights.Bold,FontSize = 14} };
 
                 ContextMenu contextMenu = new ContextMenu();
-                MenuItem menuItem = new MenuItem()
+                
+                MenuItem favorites = new MenuItem()
                 {
-                    Header = "Остановить",Name = "MenuItem" 
+                    Header = "В избранные",Name = "favorites"
                 };
-                menuItem.Click += MenuItem_Click;
+                favorites.Click += (object sender, RoutedEventArgs e) =>
+                {
+                    var menuItem = (MenuItem)sender;
 
-                contextMenu.Items.Add(menuItem);
+                    var contextMenu = (ContextMenu)menuItem.Parent;
+
+                    var item = contextMenu.PlacementTarget;
+                    favoritesList.addingProccess(otherProccesses[(int)item.GetValue(Grid.RowProperty)].OtherProccessName, otherProccesses[(int)item.GetValue(Grid.RowProperty)].Id);
+                };
+
+                MenuItem killProccess = new MenuItem()
+                {
+                    Header = "Остановить",Name = "killProccess"
+                };
+                killProccess.Click += (object sender, RoutedEventArgs e)=> 
+                {
+                    var menuItem = (MenuItem)sender;
+
+                    var contextMenu = (ContextMenu)menuItem.Parent;
+
+                    var item = contextMenu.PlacementTarget;
+                    otherProccesses[(int)item.GetValue(Grid.RowProperty)].OtherKill();
+                };
+
+                contextMenu.Items.Add(killProccess);
+                contextMenu.Items.Add(favorites);
 
                 button.ContextMenu = contextMenu;
                 var var = (int)button.GetValue(Grid.RowProperty);
@@ -149,7 +236,7 @@ namespace Kurs
                 {
                     FontSize = 14,
                     FontWeight = FontWeights.Bold,
-                    Text = resultCPU[j].ToString()
+                    Text = resultCPU[j].ToString() + "%"
                 };
                 OfProccesings.Children.Add(txt3);
                 
@@ -158,18 +245,6 @@ namespace Kurs
 
             return OfProccesings;
         }
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            var menuItem = (MenuItem)sender;
-
-            var contextMenu = (ContextMenu)menuItem.Parent;
-
-            var item = contextMenu.PlacementTarget;
-            mas[(int)item.GetValue(Grid.RowProperty)].Kill();
-
-        }
-
-
         private Grid GridMain()
         {
             Grid OfProccesings = new Grid();
@@ -208,14 +283,14 @@ namespace Kurs
                 UpdateInfo(GridOfProccesings(gr), ScV);
             };
 
-            Button memmoryOfProccess = new Button()
+            Button MemoryOfProccess = new Button()
             {
                 FontSize = 15,
                 FontWeight = FontWeights.Bold,
                 Content = new TextBlock() { Text = "Память" },
                 Background = Brushes.WhiteSmoke
             };
-            memmoryOfProccess.Click += (object sender, RoutedEventArgs e) =>
+            MemoryOfProccess.Click += (object sender, RoutedEventArgs e) =>
             {
                 whichFeald = WhichFeald.RAM;
                 UpdateInfo(GridOfProccesings(gr), ScV);
@@ -234,10 +309,10 @@ namespace Kurs
                 UpdateInfo(GridOfProccesings(gr), ScV);
             };
 
-            grid.Children.Add(nameOfProccess);grid.Children.Add(memmoryOfProccess);grid.Children.Add(CpuOfProccess);
+            grid.Children.Add(nameOfProccess);grid.Children.Add(MemoryOfProccess);grid.Children.Add(CpuOfProccess);
 
             Grid.SetColumn(nameOfProccess, 0);Grid.SetRow(nameOfProccess, 0);
-            Grid.SetColumn(memmoryOfProccess, 1);Grid.SetRow(memmoryOfProccess , 0);
+            Grid.SetColumn(MemoryOfProccess, 1);Grid.SetRow(MemoryOfProccess , 0);
             Grid.SetColumn(CpuOfProccess, 2);Grid.SetRow(CpuOfProccess , 0);
 
             return grid;
@@ -271,60 +346,110 @@ namespace Kurs
         {
             scrollViewer.Content = grid;
         }
-        private string GetProcessName(Process process)
-        {
-            string processName = "";
-            string baseProcessName = process.ProcessName;
-            int baseProcessId = process.Id;
-
-            int processOptionsChecked = 0;
-            int maxNrOfParallelProcesses = 3 + 1;
-
-            bool notFound = true;
-            
-            while(notFound)
-            {
-                processName = baseProcessName;
-                if(processOptionsChecked > maxNrOfParallelProcesses)
-                {
-                    break;
-                }
-
-                if(1 == processOptionsChecked)
-                {
-                    processName = string.Format("{0}_{1}",baseProcessName,baseProcessId);
-                }
-                else if(processOptionsChecked > 1)
-                {
-                    processName = string.Format("{0}_{1}", baseProcessName, processOptionsChecked-1);
-                }
-
-                try
-                {
-                    PerformanceCounter counter = new PerformanceCounter("Process", "ID Process", processName);
-                    if(baseProcessId == (int)counter.NextValue())
-                    {
-                        notFound = false;
-                    }
-                }
-                catch (Exception ex) { }
-                processOptionsChecked++;
-            }
-            return processName;
-        }
-
         private void products_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
         }
 
-        private void MemmoryButton_Click(object sender, RoutedEventArgs e)
+        private void MemoryButton_Click(object sender, RoutedEventArgs e)
         {
-
+            
         }
         private void CpuButton_Click(object sender, RoutedEventArgs e)
         {
+            Papa.MyChartCpu.IsLegendVisible = true;
+            Papa.MyChartMemory.IsLegendVisible = false;
+        }
+        
+        private void DataResult_Click(object sender, RoutedEventArgs e)
+        {
+            Window GainTime = new Window();
 
+            GainTime.Height = 150; GainTime.Width = 250;
+
+            Grid grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition() { });
+
+            grid.RowDefinitions.Add(new RowDefinition() { });
+            grid.RowDefinitions.Add(new RowDefinition() { });
+            grid.RowDefinitions.Add(new RowDefinition() { });
+
+            TextBlock textBlock = new TextBlock()
+            {
+                Text = "Введите время для записи отчёта",
+                FontSize = 14,
+            };
+            grid.Children.Add(textBlock);
+
+            Grid.SetRow(textBlock, 0); Grid.SetColumn(textBlock, 0);
+
+            TextBox textBox = new TextBox()
+            {
+                Height = 20,
+                Width = 200,
+                MinWidth = 80,
+            };
+
+            grid.Children.Add(textBox);
+
+            Grid.SetRow(textBox, 1); Grid.SetColumn(textBox, 0);
+
+            WrapPanel wrapPanel = new WrapPanel()
+            {
+                HorizontalAlignment = HorizontalAlignment.Right,
+                ItemHeight = 20,
+                ItemWidth = 60,
+                Margin = new Thickness(0, 0, 20, 0),
+            };
+
+            Button confirm = new Button()
+            {
+                Content = "Confirm"
+            };
+            confirm.Click += (s, e) =>
+            {
+                if (textBox.Text == null || textBox.Text == "") MessageBox.Show("Вы ничего не ввели");
+                else if (int.TryParse(textBox.Text, out int value))
+                {
+                    if (value < 0) MessageBox.Show("Ошибка: значение ввода отрицательно");
+                    if (value == 0) MessageBox.Show("Ошибка: вы ввели 0");
+                    if (value > 0)
+                    {
+                        dateTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute + value, DateTime.Now.Second);
+                        massiv = new ProccessesForReport[mas.Length];
+                        for (int i = 0; i < massiv.Length; i++)
+                        {
+                            massiv[i] = new ProccessesForReport();
+                        }
+                        pdfReport.CreatingCpuChart();
+                        pdfReport.CreatingMemoryChart();
+                        MessageBox.Show("Успешно, ожидайте");
+                        GainTime.DialogResult = false;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Введены неверные значения");
+                }
+            };
+
+
+            Button cancel = new Button()
+            {
+                Content = "Cancel"
+            };
+            cancel.Click += (s, e) => { GainTime.DialogResult = false; };
+
+            wrapPanel.Children.Add(confirm);
+            wrapPanel.Children.Add(cancel);
+
+            grid.Children.Add(wrapPanel);
+
+            Grid.SetColumn(wrapPanel, 0); Grid.SetRow(wrapPanel, 2);
+
+
+            GainTime.Content = grid;
+            GainTime.ShowDialog();
         }
     }
 }
